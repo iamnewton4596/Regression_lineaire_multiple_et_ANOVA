@@ -1,1 +1,34 @@
+# Introduction
 
+Ce jeu de donnees soumis a l'evaluation des competences acquises dans l'**UE Data Mining** et de l'**UE  Statiatiques  multidimentionneelles** fait l'objet d'une evaluation (devoir). Il sera donc **note** et **apprecie** par le Professeur responsable de ces **UE** en l'occurence **M.DEME**.
+Le travail sera reparti en trois parties dont la premiere sera consacree a l'exploration des donnees, notamment de ces valeurs manquantes pour but de les **Nettoyer** les donnees avant de poursuivre l'etude.
+La deuxieme et troisieme partie releve des deux methodes les plus rependues d'analyse de donnees. Il s'agit de la **regression lineaire (simple et multiple)**  et de l'**analyse de la variance (ANOVA)**, referencies respectivement par les **partie** $2$ et $3$.\
+
+Avant de commencer, nous allons montrer une bref description des donnees Melons qui sera le jeu de donnees dont nous utiliseront tout au long de ce projet.\
+
+Le travail necessite les packages suivants:\
+
+```{r message=FALSE, warning=FALSE}
+library(missForest)
+library(zoo)
+library(funModeling)
+library(naniar)
+library(skimr)
+library(VIM)
+library(missMDA) 
+library(FactoMineR)
+library(ggplot2)
+library(visdat)
+library(imputeTS)
+library(tidyverse)
+library(car)
+library(tseries)
+library(lmtest)
+library(Publish) 
+```
+
+```{r temp0, echo=FALSE, fig.cap="Descrition des donnees", out.width="100%"}
+knitr::include_graphics("temp0.png")
+```
+
+Allons-y !!!\
