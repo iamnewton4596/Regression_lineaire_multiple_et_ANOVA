@@ -1,0 +1,884 @@
+---
+title: "Regression lineaire multiple et Anova"
+author: "Issa GUEYE"
+date: "16/02/2022"
+output:
+  pdf_document: default
+  html_document:
+    df_print: paged
+---
+
+# Introduction
+
+Ce jeu de donnees soumis a l'evaluation des competences acquises dans l'**UE Data Mining** et de l'**UE  Statiatiques  multidimentionneelles** fait l'objet d'une evaluation (devoir). Il sera donc **note** et **apprecie** par le Professeur responsable de ces **UE** en l'occurence **M.DEME**.
+Le travail sera reparti en trois parties dont la premiere sera consacree a l'exploration des donnees, notamment de ces valeurs manquantes pour but de les **Nettoyer** les donnees avant de poursuivre l'etude.
+La deuxieme et troisieme partie releve des deux methodes les plus rependues d'analyse de donnees. Il s'agit de la **regression lineaire (simple et multiple)**  et de l'**analyse de la variance (ANOVA)**, referencies respectivement par les **partie** $2$ et $3$.\
+
+Avant de commencer, nous allons montrer une bref description des donnees Melons qui sera le jeu de donnees dont nous utiliseront tout au long de ce projet.\
+
+Le travail necessite les packages suivants:\
+
+```{r message=FALSE, warning=FALSE}
+library(missForest)
+library(zoo)
+library(funModeling)
+library(naniar)
+library(skimr)
+library(VIM)
+library(missMDA) 
+library(FactoMineR)
+library(ggplot2)
+library(visdat)
+library(imputeTS)
+library(tidyverse)
+library(car)
+library(tseries)
+library(lmtest)
+library(Publish) 
+```
+
+```{r temp0, echo=FALSE, fig.cap="Descrition des donnees", out.width="100%"}
+knitr::include_graphics("temp0.png")
+```
+
+Allons-y !!!\
+
+# Partie I
+
+Nous allons importer les donnees Melons depuis l'espace de travail:\
+
+```{r}
+DonneesMelons <- read.csv("C:/Users/ISSA GUEYE/OneDrive/Documents/Data  Science 1/Data Meaning/Projet 1/DonneesMelons.csv", sep=";", stringsAsFactors=TRUE)
+```
+
+Pour visualiser les donnees, on utilse **view()**:\
+
+```{r}
+View(DonneesMelons)
+```
+
+Renommons la base et affichons un appercu de celle-ci:\
+
+```{r}
+Melons<-DonneesMelons
+head(Melons)
+```
+
+Le resume des donnees pour une vision d'ensemble de son contenu:\
+
+```{r}
+summary(Melons)
+```
+
+Pour visualiser le nom des variables, il suffit d'appliquer la fonction **attach(Melons)**.\
+
+```{r message=FALSE, warning=FALSE}
+attach(Melons)
+```
+
+# **DONNEES MANQUANTES**
+
+Les donnees manquantes sont representees par **NA (Not Available)**.\
+
+# I)**Visualisation des donnees manquantes**\
+
+# I-1)**Visualisation par resume**\
+
+Il existe plusieurs fonctions permettant du visualiser les donnees manquantes.\
+
+## a)**df_status(Melons)**
+
+Ce Code permet de visualiser les valeurs, pour chaque variable dans le tableau: le nombre de valeurs nulles, le nombre de donnees manquantes **(NA)**, le nombre de valeurs negatives ainsi que le pourcentage de chacun d'eux, le type et le nombre de valeurs unique de chaque variable.
+
+```{r}
+df_status(Melons)
+```
+
+## b)**skimr::skim(Melons)**
+
+Il effectue le meme travail que son homologue precedent **df_status(Melons)** , une alternative de la fonction **summary()**, a quelque precision plus pour sur les variables et leur type. De plus, on peut visualiser la moyenne, la variance, et les quartile ainsi que l'histogramme des donnees.\
+
+```{r}
+skimr::skim(Melons)
+```
+
+# I-2)**Visualisation par graphe**
+
+## a)**Graphe combinatoire**
+
+- **res\<-summary(aggr(Melons,sortVar=TRUE))\$combinations**
+
+Une autre maniere de visualiser le pourcentage des donnees manquantes pour chaque variable est assurer par **res\<-summary(aggr(data,sortVar=TRUE))\$combinations** qui donne en plus de ca un graphe des proportions des donnees manquantes et des combinations des celles-ci.\
+
+```{r}
+res<-summary(aggr(Melons,sortVar=TRUE))$combinations
+```
+
+## b)**matrixplot(Melons,sortby = 2)**
+
+Par representation graphique, une maniere simple de donner un apercu des donnees manquantes est la fonction **matrixplot(Melons,sortby = 2)**, le **rouge vif** comme des taches sur la figure les variables comportants des donnees manquantes, on peut toujours remarquer qu'il s'agit des memes variables des donnees.\
+
+```{r}
+matrixplot(Melons,sortby = 2)
+```
+
+## c)**vis_miss(Melons)**
+
+**{visdat}** est un package qui permet de visualiser un jeu de donnees entier. La fonction **vis_miss()** se concentre sur les valeurs manquantes de l'ensemble de nos donnees : pourcentage de **NA** pour chaque variable et global. Visualisation:\
+
+```{r}
+vis_miss(Melons)
+```
+
+# I-3)**Visualisation par Package**
+
+- **Le package{NANIAR}**
+
+Ce package est entierement dedie aux donnees manquantes, avec en particulier **4 fonctions** permettant de les visualiser, non seulement variable par variable, mais egalement les relations entre elles.\
+
+## a)**geom_miss_points(Melons)**
+
+la fonction **geom_miss_points()** remplace les NA par des valeurs $10%$ plus basses que **la valeur minimum observee** de la variable, ce qui permet de les visualiser comme ci-dessous :\
+
+```{r}
+ggplot(data = Melons) +
+  aes(x = Duree, y = P) +
+  geom_miss_point()
+```
+
+## b)**gg_miss_var(Melons)**
+
+La fontion **gg_miss_var(Melons)** presente une autre approche pour la visualisation des donees manquantes :\
+
+```{r}
+gg_miss_var(Melons)
+```
+
+## c)**gg_miss_case(Melons)**
+
+La fonction **gg_miss_case(Melons)** presente les donnees manquantes sous forme de diagramme en barre, la visualisation est la suivante:\
+
+```{r}
+gg_miss_case(Melons)
+```
+
+## d)**gg_miss_fct(x = Melons, fct = Variete)**
+
+La fonction **gg_miss_fct()** plot le nombre de valeurs manquantes de chaque colonne en fonction d'une variable categorielle du jeu de donnees. Dans notre jeu de donnees, la variable **Variete** est la meilleur pour mettre en evidence les donnees manquantes en fonction de chaque colonne.\
+
+```{r}
+gg_miss_fct(x = Melons, fct = Variete)
+```
+
+- **Le package {UPSETR}**
+
+## e)**gg_miss_upset(Melons)**
+
+La fonction **gg_miss_upset(Melons)** peut etre utile pour visualiser les combinaisons de **NA** et intersections avec les variables.
+
+```{r}
+gg_miss_upset(Melons)
+```
+
+Maintenant que nous avons un apercu sur les donnees notamment les donnees manquantes, nous allons preceder a l'imputation de celles-ci.
+
+# II)-**Imputation des donnees**
+
+## II-1)**Methode par fonction**
+
+L'**imputation des donnees manquantes** est simplement le fait de **remplacer** ces valeurs, avec la **methode la plus adequate**. Dans cette partie, nous allons utiliser la methode classique pour imputer les donnees manquantes, c'est-a-dire les NA. La methode consiste a calculer **la moyenne de chaque colonne sans les NA**, et remplacer ces dernieres par les moyennes respectives. Illustration pour une colonne: la colonne $7$ represente la **Duree** qui comporte des donnees manquantes aux index $67,68$ et $69$.
+
+```{r}
+X<-Melons
+A=c()
+A=X[,7]
+m=mean(A,na.rm=TRUE)
+A[is.na(A)==TRUE]=m
+A
+```
+
+On remarque que les NA ont disparu et les index $67,68$ et $69$ ont ete remplace par la moyenne de la colonne de Duree qui est: $73.87879$
+
+Nous allons maintenant generaliser cette methode a tout le jeu de donnees renomme par **X**. nous avons donc:
+
+```{r}
+M=c()
+for (j in 7:11)
+  {
+  M[j]=mean(X[,j],na.rm = TRUE)
+  X[,j][is.na(X[,j])==TRUE]=M[j]
+
+}
+head(X)
+```
+
+La remarque est la meme, les **NA** ont ete **remplacer**, donc **imputer** par les moyennes repectives des colonnes.\
+
+il existe une methode beaucoup plus rapide qui consiste a utiliser un package.\
+
+## II-2)**Methode par package**
+
+La methode consiste a utiliser la fonction **na_kalman(data_impute)** du package **{imputeTS}**
+
+```{r}
+X<-na_kalman(X)
+head(X)
+```
+
+# Partie II
+
+# I)**Analyse exploratoire**
+
+Maintenant que nous avons **nettoyer** le jeu de donnees, proprement dit: tous les variables sont bien definies avec des valeurs existentes et finies, nous pouvons proceder a l'analyse de ces donnees.
+
+## I-1)**Resume Statistique**
+
+- **SUMMARY()**\
+
+le resume des donnees imputees est donne par:\
+
+```{r}
+summary(X)
+```
+
+Le resume des donnees, comme son nom l'indique, donne quelques information relative aux donnees qu'une simple observation ne donnerai pas. Il s'agit du **Min  (minimum)**,  **1st Qu (premier quantil)**, **Median (mediane)**, **Mean (moyenne)**, **3rd Qu (troisieme quantil)** et **Max (maximum)**  des  observations (de chaque variable).\
+
+- **HISTOGRAMME**\
+
+L'**histogramme** nous permet de visualiser la **repartition des effectifs des variables**. La **distribution de frequence** en forme de diagramme en barres qui indique la frequence a laquelle les valeurs observees tombent dans certains intervalles ou classes.La proportion relative de donnees qui tombe dans chaque classe est representee par la hauteur de chaque barre jusqu'a sa modalite moyenne. Les caracteristiques importantes d'une distribution peuvent etre resumees par quelques statistiques qui decrivent sa distribution comme la moyenne, la  mediane, le premier quantil, le troisieme quantil, la forme et l'etalement etc...\
+
+```{r}
+hist(X)
+```
+
+Cette visualisation nous permet de  savoir par exemple que la varibles **Variete** comporte **plusieurs varietes avec differentes modalites** et que la variable **Plantation** a une **distribution presque normale**.\
+
+-**BOITE A MOUSTACHE**\
+
+Au meme titre que ces homologues precedents, la **Boite   a moustache**  ou **Boxplot** resume aussi chaque variable en donnantnon seulement la  mediane, le premier quantil, le troisieme quantil, mais aussi la plus petite et le plus grande valeur adjacente ainsi que les valeurs les plus eloignees (valeurs aberantes).\
+
+```{r temp1, echo=FALSE, fig.cap="Exemple boite a moustache", out.width="100%"}
+knitr::include_graphics("temp1.png")
+```
+
+```{r temp2, echo=FALSE, fig.cap="Interpretation boite a moustache", out.width="100%"}
+knitr::include_graphics("temp2.png")
+```
+
+
+```{r}
+X %>%
+        select_if(is.numeric) %>%
+        gather(variable, value) %>%
+        ggplot(aes(y=value,x=variable, fill=variable, colour=variable))+
+        geom_boxplot(alpha=0.5)+
+        facet_wrap(~variable, scales="free") 
+```
+
+La remarque d'au temps se confirme, il s'agit de la distribution supposee normale de la variable **Plantation** (ainsi que Poids et Rdt).\
+Il  existe des valeurs aberantes pour les variables **N**, **P**., **K** et **Rdt**  mais celles de la varibles  **N** est plus extreme  car tres eloignees de la mediane.\
+
+## I-2)**Correlation et interpretation**
+
+Une **matrice de correlation** est utilisee pour evaluer la **dependence entre plusieurs variables** en meme temps. Le resultat est une table contenant les coefficients de correlation entre chaque variable et les autres,  dont une valeur dans l'intervalle $\lbrack -1,1 \rbrack$. Plus la valeur est proche de $0$, plus les deux variables sont **independantes**. Cependant, on note une forte dependance si elle est plus proche de $1$ ou $-1$. La sortie est sous forme de matricielle a l'exception de la variable **Variete**.\ 
+La **matrice de correlation* entre les variables est donnee par:\
+
+```{r}
+cor(X[,-3])
+```
+
+Il  existe des variables qui sont positivement correlees avec d'autres, par contre certains  sont negativement correlees.\
+Cependant, la variable **Plantation** a une correlation nettement proche de $1$ ou $-1$ par rapport a toutes les autres variables.\
+
+## I-3)**Methode graphique (**SCATTERPLOT**)**
+
+Cette methode tres  complexe permet de visualiser le **nuage de point** et la **droite de regression** entre deux variables, en plus de l'histogramme de  chaque variable.\
+Ainsi pour des raison de lisibilite, nous allons procer a une combinaison des $6$ variables parmi $12$ en les arrangeant de sorte a voir la correlation $2$ a $2$ de  toutes les variables.\
+
+```{r}
+panel.hist <- function(x, ...)
+{
+    usr <- par("usr"); on.exit(par(usr))
+    par(usr = c(usr[1:2], 0, 1.5) )
+    h <- hist(x, plot = FALSE)
+    breaks <- h$breaks; nB <- length(breaks)
+    y <- h$counts; y <- y/max(y)
+    rect(breaks[-nB], 0, breaks[-1], y, col = "cyan", ...)
+}
+pairs(X[1:6], panel = panel.smooth,
+      cex = 1.5, pch = 24, bg = "light blue", horOdd=TRUE,
+      diag.panel = panel.hist, cex.labels = 2, font.labels = 2)
+```
+
+
+```{r}
+pairs(X[c(1,2,3,7,8,9)], panel = panel.smooth,
+      cex = 1.5, pch = 24, bg = "light blue", horOdd=TRUE,
+      diag.panel = panel.hist, cex.labels = 2, font.labels = 2)
+```
+
+```{r}
+pairs(X[c(1,2,3,10,11,12)], panel = panel.smooth,
+      cex = 1.5, pch = 24, bg = "light blue", horOdd=TRUE,
+      diag.panel = panel.hist, cex.labels = 2, font.labels = 2)
+```
+
+```{r}
+pairs(X[c(4,5,6,7,8,9)], panel = panel.smooth,
+      cex = 1.5, pch = 24, bg = "light blue", horOdd=TRUE,
+      diag.panel = panel.hist, cex.labels = 2, font.labels = 2)
+```
+
+```{r}
+pairs(X[c(4,5,6,10,11,12)], panel = panel.smooth,
+      cex = 1.5, pch = 24, bg = "light blue", horOdd=TRUE,
+      diag.panel = panel.hist, cex.labels = 2, font.labels = 2)
+```
+
+Cependant, il est clair que le **Poids** et le **Rendement** (**Rdt**) des variete merite une visualisation plus  commode car, dans certaine consideration, c'est ce qui peut, pour le mieux, interesser a un cultivateur.\
+
+```{r message=FALSE, warning=FALSE}
+scatterplotMatrix(~Rdt+Poids|Variete, data=X,
+   main="The Varietes Options")
+```
+
+Derechef, la variable **Plantation** qui est supposee d'une distribution normale, candidat pour etre la variable reponse  se voit comparer aux autres variables par la methode **scatterplot** suivante.\
+
+```{r}
+names(X)
+```
+
+```{r message=FALSE, warning=FALSE}
+scatterplot(Plantation ~ Essai, data=X, ellipse=TRUE, 
+  smooth=list(style="lines"))
+scatterplot(Plantation ~ Annee, data=X, ellipse=TRUE, 
+  smooth=list(style="lines"))
+scatterplot(Plantation ~ Variete, data=X, ellipse=TRUE, 
+  smooth=list(style="lines"))
+scatterplot(Plantation ~ Creneau, data=X, ellipse=TRUE, 
+  smooth=list(style="lines"))
+scatterplot(Plantation ~ Couverture, data=X, ellipse=TRUE, 
+  smooth=list(style="lines"))
+scatterplot(Plantation ~ Duree, data=X, ellipse=TRUE, 
+  smooth=list(style="lines"))
+scatterplot(Plantation ~ N, data=X, ellipse=TRUE, 
+  smooth=list(style="lines"))
+scatterplot(Plantation ~ P, data=X, ellipse=TRUE, 
+  smooth=list(style="lines"))
+scatterplot(Plantation ~ K, data=X, ellipse=TRUE, 
+  smooth=list(style="lines"))
+scatterplot(Plantation ~ Rdt, data=X, ellipse=TRUE, 
+  smooth=list(style="lines"))
+scatterplot(Plantation ~ Poids, data=X, ellipse=TRUE, 
+  smooth=list(style="lines"))
+```
+
+Ce graphe parle de lui-meme.\
+Le point centre de l'elipse represente la moyenne des observations donc naturellement les valeurs appartenant a l'elipse sont proches  de la moyenne.\
+La droite en **bleue foncee** represente la droite de regression et elle passe par la moyenne.\
+Les droites en pointillees  represente l'intervalle de confiance. Si on ajoutait des  valeurs de la variable, elles se situeront a $95%$ de chance dans cette intervalle.\
+Enfin, une boite a moustache pour chaque variable pour exiber comme precedemment les caracteristiques de le variable.\
+
+## I-4)**Analyse  pour le  choix de modele**
+
+### a)**Regression lineaire simple**
+
+L'etude du meilleur modele demande un peu d'intuition, mais aussi un vu  d'ensemble des variable.\
+L'objetif de l'etude ici consiste a examiner la variable la **plantation** pour une meilleure recolte. Ce choix  emane de l'etude  et non des donnees.  
+Pour etudier le meilleur modele, on utillisera le critere de **AIC**  dont on definira par la suite, mais les parametres  du modele (c'est-a-dire les variables significatifs) seront revelees par la fonction **summary()** mais cette fois-ci  sur le modele.\
+
+```{r}
+names(X)
+modele_spl=lm(X$Plantation~X$Essai+X$Annee+X$Variete+X$Couverture+X$Creneau+X$Duree+X$N+X$P+X$K+X$Rdt+X$Poids)
+summary(modele_spl)
+```
+
+
+- **SIGNIFICATION DES TERMES**
+
+Voici la description des differentes informations contenues dans la sortie ci-dessus.\
+- **Call** : un rappel de la formule utilisee dans le modele.\
+- **Residuals**: une analyse descriptive des residue $\widehat{\epsilon_i} =\widehat{Y_i}-Y_i$. Nous verrons par la suite l'interet des residue pour valider les hypotheses du modele de regression.\
+- **Coefficients** : ce tableau comprend quatre colonnes :\
+-   **Estimate** correspond aux estimations des parametres de la droite de regression;\
+-   **Std. Error** correspond a l'estimation de l'ecart type des estimateurs de la droite de regression;\
+-   **t value** correspond a la realisation de la statistique du test de Student associe aux hypotheses $\mathcal{H}_0:\beta_i=0$ **versus** $\mathcal{H}_1 :\beta_i\neq 0$\
+- **$Pr (>\lvert t\rvert)$** correspond ala valeur-p du test de Student.\
+- **Signif. codes** : symboles de niveau de significativite.\
+- **Residual standard error** : une estimation de l'ecart type du bruit $\sigma$ est foumie ainsi que le degre de liberte associe $n - 2$.\
+- **Multiple R-Squared** : valeur du coefficient de determination $r^2$ (pourcentage de variance explique par la regression).\
+- **Adj usted R-Squared** : $r_a^2$ ajuste (qui n'a pas grand interet en regression lineaire simple).\
+- **F-Statistic** : correspond ala realisation du test de Fisher associe aux hypotheses $\mathcal{H}_0:\beta_i=0$ **versus** $\mathcal{H}_1:\beta_i\neq 0$. Nous y trouvons les degr'es de liberte associes ($1$ et $n - 2$) ainsi que la **valeur-p**.
+
+- **hYPOTHESES**
+
+Les valeurs realisees des statistiques de tests de Student associes aux hypothese $\mathcal{H}_0:=\beta_i$ **versus** $\mathcal{H}_0 \neq 0 \beta_i$ se trouvent dans la colonne **t value**, les **valeur-p** associees dans la colonne $Pr (> \lvert t\rvert)$. **Residual standard error** fournit l'estimation de $\sigma$ ainsi que le nombre de degres de liberte associes $n - p - 1$. On trouve entin le coefficient de determination $r^2$ (**Multiple R-squared**) ainsi qu'une version ajustee (**Adjusted R-squared**). Entin, on trouve la realisation du test de Fisher global (**F-statistic**) ainsi que sa **valeur-p** **(p-value)** associee.\
+
+- Le test F de Fisher global permet de tester l'apport global et conjoint de l'ensemble des variables explicatives presentee dans le modele pour **expliquer** les variations de la Plantation. L'hypothese nulle est $\mathcal{H}_0:=\beta_1 = \beta_2 = \ldots \beta_p = 0$; (l'ensemble des **p** variables explicatives n'apporte pas une information utile pour la prediction de la Variable Plantation, sous le modele lineaire). L'assertion d'interet est $\mathcal{H}_0:$ au moins l'un des coefficients $\beta_j (j = 1,2,\ldots, p)$ est significativement different de zero (au moins une des variables explicatives est associee a la variable plantation apres ajustement sur les autres variables explicatives).\
+- Le test associe a l'intercept $\beta_0$ du modele est significatif (**valeur-p**$<O.05$), il est donc conseille de garder l'intercept ($\beta_0$) dans le modele. Toutefois, l'intercept de cette regression n'a aucun sens. II pourrait donc etre plus judicieux de considerer une regression sur la variable **Plantation**, prealablernent centree. Dans ce cas-ci, $\beta_0$ representerait la Plantation moyenne des Variete pour des Champs ayant une superficie egale a la moyenne des superficie des Champs observes.\
+
+- **INTERPRETATION**
+
+Au vu des resultats du **test de Fisher global** ($p-value: < 2.2e-16$), nous pouvons conclure qu'au moins une des variables explicatives est associee a la Variable **Plantation**, ajuste sur les autres variables.\
+
+- La relation lineaire entre **Plantation** et **Variete** est dernontree par le resultat du test de Student sur les coefficients $\beta$. La $valeur-p<0.05$ n'est observe sur aucune d'elles. Ainsi, de meme que sur les variables **Annee**, **Duree**, **N**, **P** et **Rdt**. cela nous renseigne en amont que ces Variables sont moins significatifs et n'explique presque pas le resultat de la variable a expliquer *Plantation*.\
+- Par contre a relation entre **Plantation** et les Variables **Essai**, **Couverture**, **Creneau**, **K** et **Poids** ont la $valeur-p<0.05$ montre une significativite importante selon la **valeur-p** obtenue.\
+- Le pourcentage de variance explique par la regression ($r^2$) vaut $0.9457$. Ce qui veut dire que $94.5 % $ de la variabilite de la **Plantation** des Variete est expliquee plus par les Variables **Essai**, **Couverture**, **Creneau**, **K** et **Poids** et moins que les Variables **Annee**, **Variete**,**Duree**, **N**, **P** et **Rdt**.\
+Il sera donc utile de **retirer**, dans le modele, certaines variables explicatives (regression lineaire multiple) afin d'ameliorer le pouvoir predictif du modele.\
+
+Pour Simplifier l'Analyse du choix du modele, nous allons retirer les Variables:\
+- **Essai**: dont les valeurs sont une enumeration seulement\
+- **Annee**: qui ne designe que l'annee de la plantation\
+- **Variete**: qui designe les varietes a Planter. Toutefois, il faut tenir en compte que certaines Varietes sont plus frequentes que d'autres.\
+Nous noterons par **result** le jeu de donnees sans ces variables citees.
+
+```{r}
+result=X[,-c(1,2,3)]
+head(result)
+```
+
+La sortie est sous forme de matricielle a l'exception des variables  **Essai**, **Annee**  et **Variete**.\ 
+La matrice de correlation entre les variables est donnee par:\
+
+```{r message=FALSE, warning=FALSE}
+head(data.frame(result))
+cor(result)
+```
+
+### b)**Regression lineaire multiple**
+
+Le modele de **regression lineaire multiple** s'ecrit $$Y=\beta_0+\beta_1X_1+\ldots+\beta_pX_p+\epsilon$$ ou $\epsilon$ represente le terme de perturbation aleatoire (bruit) du modele souvent suppose gaussien d'esperance nulle et de variance $\sigma^2$, et independant des X_j.\
+Les parametres (inconnus) du modele de regression sont $\beta_0,\beta_1, \ldots,\beta_p$, et $\sigma^2$.\
+La fonction **glm()** est utilisee dans **R**, avec la syntaxe generale : **glm(formula, family=familytype(link=linkfunction), data=dataset)**\
+ou :\
+- **formula**: c'est la formule classique pour ecrire le modele a estimer (de type) : 
+$$Y = X_1 + X_2 + ...$$
+ou **Y** est la variable a expliquer et $X_1,X_2,...$ sont les variables explicatives.\
+- **family**: represente la distribution du terme d'erreur.\
+- **link**: la forme de la fonction lien specifiee.\
+
+On souhaite expliquer la **Plantation** en fonction des autres variables. Comme il s'aagit de donnees de comptage, on utilise le modele de **Poisson** :\
+Le **modele 1** suivant nous donne regression lineaire appliquee aux variables **Couverture**, **Creneau**, **Duree**, **Poids**, **N**, **P**, **K** et **Poids**.\
+
+```{r}
+modele_g1=glm(result$Plantation~result$Couverture+result$Creneau+result$Duree+result$Poids+result$N+result$P+result$K+result$Rdt,family = "poisson")
+modele_g1
+```
+
+- **INTERPRETATION**\
+
+On lit le modele suivant:
+$$Plantation = 4.305e  + 00+7.692e-02*Couverture + 4.522e-02*Creneau - 4.641e-04*Duree + 1.197e-04*Poids + 2.782e-04*N + 1.698e-04*P - 4.865e-04*K - 2.004e-05*Rdt$$
+Les tests sur les divers parametres sont obtenus grace a la fonction **summary()** Les resultats foumis par **summary()** se presentent de facon identique a ceux de la regression lineaire simple. On y retrouve les estimations des parametres de regression dans la colonne **Estimate**.
+
+```{r}
+summary(modele_g1)
+```
+
+Le resume du **modele_g1** nous permet de retenir les Variables **Couverture**, **Creneau** et **K** car elles presentes une significativite par rapport a la variavle a expliquer **Plantation**.\
+L'**AIC** ou **Critere d'Information d'Akaike** pour la selection de modeles dans ce cas est de $AIC:= 946.6$.\
+
+Ainsi, cela nous permet de retirer encore les variable juge peu significative que sont: **Duree**, **Poids**, **N**, **P** et **Rdt**.\
+
+Le **modele 2** suivant nous donne regression lineaire appliquee aux variables **Couverture**, **Creneau** et **K**.\
+
+```{r}
+modele_g2=glm(result$Plantation~result$Couverture+result$Creneau+result$K,family = "poisson")
+modele_g2
+```
+
+- **INTERPRETATION**\
+
+on lit le modele suivant:
+$$Plantation =  4.4196696 + 0.0841193*Couverture + 0.0459639*Creneau - 0.0005673*K$$
+Le resume du **modele_g2** permet entre autre de determiner en plus des degres de significativite des variables, celles qui expliquent au mieux la variables **Plantation**.\
+
+```{r}
+summary(modele_g2)
+``` 
+
+L'**AIC** ou **Critere d'Information d'Akaike** pour la selection de modeles dans ce cas est de $AIC:= 945.53$, avec une legere baisse par rapport au modele precedent.\
+
+La comparaison des **AIC** des deux modeles nous permet de conclure que le modele 2 (**modele_g2**) est meilleur que le modele 1 (**modele_g1**).\
+
+# I)**Analyse des residus et Test**
+
+Le test d'evaluation de la significativite du lien lineaire entre les deux variables est valide, si les residus :\
+
+- sont independants
+- sont distribue selon une loi Normale de moyenne $0$
+- sont distribue de facon homogenes, c'est a dire, avec une variance
+constante.\
+
+## I-1)**Evaluation de l'hypothese d'independance des residus**
+
+En general, l'**hypothese d'independance des residus** est **validee** ou **rejetee** en fonction du protocole experimental. Un exemple frequent de non independance se rencontre lorsque la **variable predictive** (**en X**) est une variable indiquant le **temps**, comme des *annees* ou des *mois* par exemple. Dans ce cas, on observe une **auto-correlation** des residus.\
+
+On parle d'**auto-correlation des residus** lorsque, par exemple, le residu d'un **point quelconque est liee a celui du point suivant** dans le tableau de donnees. La presence d'une auto-correlation peut etre mise en evidence par un  **lag plot**.\
+
+```{r}
+acf(residuals(modele_g2), main="modele_g2") 
+```
+
+Les **pointillees horizontaux** sont les **intervalles de confiance** du coefficient de correlation egal a $0$. Les **traits verticaux** representent les **coefficients de correlation** entre les residus de chaque point et ceux des points de la ligne suivante (**lag=1**), ou ceux separes de deux lignes (**lag=2**) etc...\
+Ici, le plot nous montre qu'**aucune auto-correlation significative n'est presente** pour les lags.\
+
+Le test de **Durbin-Watson** peut etre employe pour evaluer la presence d'une **auto-correlation** pour un **lag** de valeur $1$. L'hypothese d'independance des residus est rejetee lorsque la **p-value** du test est inferieure a $0.05$.\
+
+```{r}
+durbinWatsonTest (modele_g2)
+```
+
+Ici, le test nous indique qu'**il  n'existe aucune auto-correlation significative** entre les residus d'une ligne du tableau de donnees et ceux de la ligne suivante.\
+**Ainsi, l'hypothese d'independance des residus est acceptee**.\
+
+## I-2)**Evaluation de l'hypothese de normalite des residus**
+
+Cette hypothese peut s'evaluer graphiquement a l'aide d'un **QQplot**. Si les residus sont bien **distribues le long de la droite** figurant sur le plot, alors l'**hypothese de normalite est acceptee**. A l'inverse, s'**ils s'en ecartent**, alors l'**hypothse de normalite est rejetee**.\
+
+```{r}
+par(mfrow=c(1,2))
+hist(residuals(modele_g2), main="Histogramme")
+lines(density(residuals(modele_g2)),col="red")
+#qqnorm(residuals(modele_g2),datax=TRUE)
+#qqline(residuals(modele_g2),datax=TRUE)
+plot(modele_g2,2)
+```
+
+- Les **QQ-Plots** (ou **diagrammes Quantile-Quantile**) sont des graphiques dans lesquels les quantiles de deux distributions sont traces l'un par rapport a l'autre.
+On appelle **QQ-Plot** normal le diagramme qui permet de comparer la distribution des donnees d'un lot a la distribution dite **normale** ou **gaussienne**.\
+- La droite du **QQ-Plot** indique la position que devraient avoir les points s'ils obeissaient exactement a la distribution normale.\
+- Le **QQ-plot** suggere des erreurs normales puisque les quantiles observes  et les quantiles theoriques (obtenus si la distribution est normale) forment une droite. L'hypothese de normalite ne sera donc pas remise en question.\
+
+Le test de **Shapiro-Wilk** peut egalement etre employe pour **evaluer la normalite des residus**. L'**hypothese de normalite est rejetee** si la **p-value** est inferieure a $0.05$.\
+
+```{r}
+shapiro.test(residuals(modele_g2))
+```
+
+Le modele choisi renvoie une **p-value** non significative  $p-value = 0.1182$. Les residus suivent donc une loi normale:\ 
+**L'hypothese de la normalite est acceptee**.\
+
+## I-3)**Evaluation de l'hypothese d'homogeneite des residus**
+
+La encore, cette hypothese peut se verifier de facon visuelle, pour cela il faut realise un **residuals vs fitted plot**. Les **fitted** correspondent aux reponses predites par le modele, pour les valeurs observees de la variable predicitive. Si on s'interesse a la regression lineaire multiple entre la variable **Plantation** et les variables **Couverture**, **Creneau** et **K**, les **fitted** correspondent aux valeurs de **Plantation** predites par le modele pour les valeurs de **Couverture**, **Creneau** et **K** presentes dans les donnees.\
+
+Plus precisement, on utilise pour ce plot la **racine carree des residus standardises**.\
+
+```{r}
+plot(modele_g2,3)
+```
+  
+Ici, la **courbe rouge**, qui est aussi une **courbe de regression locale**, est **globalement plate**. Ceci montre que les residus ont tendance a etre repartis de facon homogene tout le long du gradient des valeurs de prestige predites.\
+Ainsi **l'hypothese d'homogeneite des residus est acceptee**.\
+
+## I-4)**Evaluation a posteriori de l'hypothese de linearite**
+
+Cette hypothese peut s'evaluer sur les residus a l'aide du plot suivant :\
+
+```{r}
+plot(modele_g2,1)
+```
+
+La forme generale peut etre **assimilee** a un **S**.\
+Les informations que nous pouvons trouver a parti de la forme generale de la courbe des points concernent essentiellement ce qui a trait aux coefficients de forme: l'**etalement** (**skewness**) et l'**aplatissement** (**kurtosis**). De plus on peut tout de suite voir que nos donnees suivent une courbe **bi-modale**.\
+Nous pouvont apprendre de ce diagramme deux principales observations sur la distribution.
+- **Observation de l'etalement:**
+Tout d'abord, sur l'etalement **(skewness)**.\
+Les points des donnees correspondant au centre de la distribution sont tres proches de la droite theorique.\
+- **Observation de l'applatissement:**
+L'autre observation qu'on peut faire concerne le coefficient d'etalement **(kurtosis)**.\
+
+Notre distributions a des bords relativement fins (appelees **platykurtiques**) et qui ont un kurtosis de valeur inferieure  a  $3$, a  cause de leur forme generale en **S**, avec la **partie negative** des **ecarts-type en creux**, et la **partie positive** des **ecarts-types en bosse**:\
+
+Ici, le plot nous montre que lorsque les reponses predites par le modele (*fitted values*) augmentent, les residus restent globalement uniformement distribues de part et d'autre de $0$. Cela montre, qu'en moyenne, la droite de regression, est bien adaptee aux donnees.\
+Ainsi donc que **l'hypothese de linearite est acceptable**.\
+
+
+**Parametres et tests**
+
+Maintenant que les hypotheses de linearite, de normalite, d'homogeneite et d'independance des residus sont satisfaites, alors les resultats de la regression sont valides, et on peut donc les interpreter.
+
+
+# II)**Modelisation statistique**
+
+## II-1)**Justification du modele  de regression choisi**
+
+Nous etudions ici la Variable Plantation pour pouvoir mieux comprendre ses variations.\
+
+En fonction du temps, visualisons l'evolution de la Plantation.\
+
+```{r}
+Plantation <-X$Plantation
+n=length(Plantation)
+plot(1:n,Plantation,type ="l", col =  "red", xlab = "mois", ylab = "Plantation")
+```
+
+La visualisation de son evolution au cours du temps.\
+
+```{r}
+qqplot(1:n, Plantation, type = "l")
+```
+On remarque que l'evolution en fonction  du temps est croissante. Dans l'ensemble, ceci  est une bonne evolution.\
+
+## II-2)**Contrainte**
+
+La visualisation de la **distance de  Cooks** pour determiner les valeurs extreme potentiellement **capable de perturber** l'etude ou le resultat de l'etude.\
+
+```{r}
+plot(cooks.distance(modele_g2),type="h")
+```
+
+Ces **valeurs susceptibles de perturber l'etude car aberantes** vis a vis des autres varleurs, ce sont les valeurs extremes avec le plus haut piques mais tres loins des autres. elles sont **capables de perturber la normale distribution des residus** qui peut mener a la non validite du modele. il est conseiller de les supprimer et de continuer l'etude.\
+
+-**Graphe du modele**
+
+**Avant de conclure definitivement sur la significativite ou pas** de la relation lineaire entre la **variable reponse** et les **variables predictives**, il peut etre interessant de rechercher s'il existe des donnees influentes, et quel est leur impact sur les resultats.
+
+Cette fonction renvoie $4$ graphes :
+- **le premier** (en partant du bas), celui des **hat value**, reflete l'effet de levier (ou poids) de chaque donnee sur sa propre estimation. Une donnee est consideree comme atypique lorsque cette valeur est inferieure a $0.05$;\
+- **le second** plot celui des **p-value** de **Bonferroni** permet de **mettre en evidence les outliers**.\ Est consideree comme outlier une donnee ayant une **p-value inferieure** a $0.05$.
+- **le troisieme** plot, celui des **residus studentizes** permet egalement de mettre en evidence les **outliers**
+- **le dernier** plot, celui des **distance de Cook** permet d'evaluer l'**influence des donnees sur les parametres de regression**. La **distance de Cook** mesure le changement dans l'estimation des parametres de regression lorsque la donnee n'est pas prise en compte par les **moindres carres**. Plus la distance est elevee, plus la modification des parametres de regression est importante. Le seuil de $1$ est couramment utilise pour **considerer qu'une donnee est tres influente**.\
+
+```{r}
+influenceIndexPlot(modele_g2)
+```
+
+La donnee $67$ est mise en evidence par $2$ des $4$ plots. Le **deuxieme graph** (en partant du haut) la designe comme **potentiel outlier**. De son cote, le plot des **distances de Cook** montre que son influence est **parmi les deux plus fortes**. Neanmoins, elle est **inferieure** a $1$, ce qui nous amene a penser que **son influence sur les parametres** du modele **n'est pas vraiment problematique**. La **p-value** de **Bonferroni** (plot 2) peut etre obtenue avec la fonction **outlierTest**.\
+
+```{r}
+outlierTest(modele_g2)
+```
+
+La **p-value** ajustee par la methode de **Bonferonni** est superieur au seuil de $0.05$. La donnee $67$ **ne peut donc pas etre consideree comme outlier**.\
+
+Le plot des **distances de cook** met egalement en evidence une certaine influence de la donnees $87$ sur les parametres du modele de regression. Par acquis de conscience, on peut refaire tourner le modele sans ces donnees $67$ et $87$, afin visualiser leur impact.\
+
+```{r}
+modele_g2_bis=glm(result$Plantation~result$Couverture+result$Creneau+result$K,family =  "poisson",  data=X[-c(67,87),])
+    compareCoefs(modele_g2 ,modele_g2_bis) 
+```
+
+Comme attendu, on voit que les donnees $67$ et $87$ n'ont que peu d'influence sur les coefficients des parametres du modele, ainsi que sur leur erreur standard, puisque les valeurs ne varient pas beaucoup.\
+
+## II-3)**Validation des parametres**
+
+Apres avoir etudier le modele, il est important de conclure sur la validite des parametres. 
+Il s'agit des residus  qui sont normalement distribue d'apres les tests effectues sur ce modele, il convient ainsi de les reccuperer et de representer explicitement sa distribution. L 'histogramme et la  densite  conjointe nous facilitera la visualisation.\
+
+- **RESIDUS**
+
+```{r}
+res=modele_g2$residuals
+res
+```
+
+- **DISTRIBUTION**
+
+```{r}
+hist(res,col = "red")
+lines(density(res),col = "green")
+```
+
+- **REPRESENTATION DU MODELE**
+
+```{r}
+coefficients(modele_g2)
+coef=modele_g2$coefficients
+p=exp(coef[1]+coef[2]*result$Couverture+coef[3]*result$Creneau+coef[4]*result$K)
+plot(1:135,p,type = "l",xlab="annee",ylab="Plantation=moyenne")
+```
+
+## II-4)**Prediction et intervalle de confiance**
+
+Avec le modele  **modele_g2** considere comme retenu, on peut etablir l'intervalle de confiance et effectuer une prediction des valeurs de le variable **Plantation**.\
+
+- **Intervalle de confiance**
+
+```{r message=FALSE, warning=FALSE}
+confint(modele_g2)
+```
+
+- **Prediction**
+
+```{r}
+predict(modele_g2)
+```
+
+ou encore\
+
+```{r message=FALSE, warning=FALSE}
+x1=mean(result$Couverture)
+x2=mean(result$Creneau)
+x3=mean(result$K)
+#modele_g2
+dat=data.frame(c(x1,x2,x3))
+predict(modele_g2,dat,interval="confidence")
+```
+
+Examinons maintenant le **graphe des residus** en fonction des **valeurs predites**. La figure ci-dessous montre un nuage de residue correctement repartis et symetrique autour de l'axe des ordonnees, les conditions du modele ne semblent donc pas invalidees.
+
+```{r}
+plot(residuals(modele_g2)~fitted(modele_g2),xlab="Valeurs predites ", ylab="Residus ")
+```
+
+Pour etre plus convaincu, visualisons les valeurs predites du modele, il est clair que le modele n'est pas fameux et qu'il satisfait l'objection de l'etude.
+
+```{r message=FALSE, warning=FALSE}
+G<-predict(modele_g2,dat)
+plot(G)
+```
+
+# Partie III 
+
+# **Tableau d'analyse de la variance**
+
+# I)**Appercu des resultat**
+
+## I-1)**Exploration visuelle des donnees**
+
+```{r}
+levels(X$Variete)
+ggplot(X, aes(y=Plantation, x=Variete,colour=Variete ,fill=Variete))+
+geom_boxplot(alpha=0.5, outlier.alpha=0)+
+geom_jitter(width=0.25)+
+theme_classic() 
+```
+
+L'argument **outlier.alpha = 0** dans la fonction **geom_boxplot** permet de **ne pas representer deux fois un point outlier** (une fois avec la fonction **geom_boxplot**, un fois avec la fonction **geom_jitter**). La fonction **geom_jitter** permet de **representer les points sans qu'ils se chevauchent**. L'argument **width = 0.25** permet de **gerer l'ecartement des points**.\
+
+Notons que certaines varietes pour ne citer que **Anasta**, **Metis** et **Theo** ont des medianes proches tandis que d'autres pour ne citer que **Bastille**, **Escrito**  sont superieures et proche et celles comme **Fidji** et **Manta**  sont inferieures  et proches par la medianes.\
+Cependant la variete **Heliobel** est represente par une seule valeur, ce qui nous en dit beaucoup sur celle-ci, elle n'est pas preferee par les cultivateur. Soit par la rarete de la demande, soit par la cherete de sa plantation pour dire une rentabilite moindre.
+Enfin, on peut aussi remarquer que **certaines varietes sont plus abondantes** (preferees) par les cultivateurs **que d'autres**.\
+
+## I-2)**Calculer les moyennes et leurs intervalles de confiance**\
+
+Il peut egalement etre interessant de calculer les **moyennes** et leur **intervalle de confiance**. Une facon rapide de le faire est d'employer la fonction **ci.mean** du package **Publish**. Les estimations des intervalles de confiances sont basees sur une distribution **t**.\
+
+```{r}
+ci.mean(Plantation~Variete,data=X)
+```
+
+Sous **R**, il y a deux commandes principales pour realiser l'**ANOVA** : **aov** et **lm**.\
+
+```{r}
+lm1 <- lm(Plantation~Variete, data=X) 
+aov1 <- aov(Plantation~Variete, data=X)
+```
+
+Poursuivons avec **lm**.\
+
+## I-3)**Visualisation des resultats**
+
+Les resultats de l'**ANOVA** sont generalement representes sous la forme d'une **table de variance**.\
+
+```{r}
+Anova(lm1)
+```
+
+Nous ferons un commentaire de cette table des variances apres avoir verifier les hypotheses.\
+
+# II)**Verification des hypotheses**\
+
+Le resultat de l'**ANOVA a un facteur** est valide (on peut avoir confiance dans ce resultat), si $3$ hypotheses sont verifiees :
+
+- Les residus sont independants :
+- Les residus suivent une loi normale de moyenne $0$
+- Les residus relatifs aux differentes modalites sont homogenes (ils ont globalement la meme dispersion), autrement dit leur variance est constante.\
+
+## II-1)**Independance des residus**
+
+```{r}
+durbinWatsonTest(lm1)    
+```
+
+Ici la **p-value** est nulle, l'hypothese $H_0$ est donc acceptee, et on conclut a l'**absence** d’**auto-correlation**.\
+**L'hypothese d'independance des residus est acceptee**.\
+
+## II-2)**Normalite des residus**
+
+Pour verifier cette hypothese, on utilise generalement un **QQplot** et/ou un **test de normalite** comme le test de **Shapiro-Wilk**.\
+
+```{r}
+plot(lm1,2) 
+```
+
+Ici les points sont repartis le long de la ligne, cela signifie que les residus sont distribues selon une loi normale. Le fait que les points soient centres sur 0 (sur l'axe des y), montre certes, que leur moyenne est egale a $0$.\
+
+L'hypothese nulle du test de normalite de **Shapiro Wilk** specifie que les residus suivent une loi normale, alors que son hypothese alternative specifie qu'ils suivent une autre distribution quelconque. Pour accepter la normalite des residus, il est donc necessaire d'obtenir une **p-value** $> 0.05$.\
+
+
+```{r}
+shapiro.test(residuals(lm1))
+```
+
+Ici, on a **p-value**$>0.05$ sensiblement, l'hypothese nulle $H_0=0$ du test de normalite de **Shapiro Wilk** est donc rejetee, les residus suivent une distribution normale.\
+**L'hypothese de normalite des residus est acceptee**.\
+
+## II-3)**Homogeneite des variances**\
+
+L'**hypothese d’homogeneite des variances**, c'est-a-dire l'**hypothese que les residus ont une variance constante**, peut s'evaluer **graphiquement** et/ou a l'aide d'un **test statistique**.\
+
+La **methode graphique** consiste a **representer les residus standardises** en fonction des **valeurs predites** (les moyennes des differents traitements).\
+
+```{r}
+plot(lm1,3)
+```
+
+On voit ici que les dispersions des residus (leurs ecartements verticaux) relatives a chaque modalite de traitement sont globalement identiques.\
+L'**hypothese d'homogeneite des residus est acceptee**.
+
+On peut egalement utiliser  le test de **Levene**ou le test de **Fligner-Killeen**. Leurs hypotheses nulles $H_0=0$ specifient que les **variances des differents groupes sont globalement identiques**. A l'inverse, leurs hypotheses alternatives $H_0=0$ specifient qu'**au moins 2 variances** (les variances de 2 modalites) **sont differentes**.\
+
+Pour **accepter l'hypothese d’homogeneite des residus**, il est donc necessaire d'obtenir une **pvalue** $>0.05$.\
+
+```{r}
+#bartlet.test(residuals(lm1)~X$Variete)
+leveneTest(residuals(lm1)~X$Variete)
+fligner.test(residuals(lm1)~X$Variete)
+```
+
+Ici, on a **p-value**$>0.05$.\
+L'**hypothese d'homogeneite des residus est donc acceptee**.\
+
+En  resumant les plot sur une seule sortie, on optient une visualisation d'ensemble  des hypotheses a  verifier.\
+
+```{r}
+par(mfrow=c(2,2)) 
+plot(lm1) 
+```
+
+# III)**Interpretation des resultats**
+
+Les hypotheses etant validees, les resultats peuvent etre interpretes.\
+
+```{r}
+Anova(lm1)
+```
+
+La **p-value** de l’ANOVA est $< 0.05$, ce resultat indique alors que la  plantation des differentes Varietes de Melons est  globalement differente. Ce qui explique leur difference absolue des moyennes par rapport a cette variable.
+Cependant, une telle etude peut etre effectuee avec les variables **Poids** et **Rdt**, dans ces cas, nous verront, avec des differences moindres, les memes resultats selon les hypotheses et l'analyse proprement dit de la variance.
+
+# **Conclusion**
+
+Au terme de cette etude, nous pouvons nous accorder sur le fait que les donnees soumises a notre evaluation (Essais varietaux sur Melons) comporte dans l'ensemble un bon jeu de donnees faciles a etudier tant dans l'accessibilite des valeurs que dans l'interpretation des resultats. 
+Il faut cependant avoir l'avis du cultivateur ou d'un expert agricole pour une meilleur interpretation des resultats statistiques. les donnees parlent certes, mais l'analyse statistique de celle-ci ne suffit pas pour avoir satisfaction dans son domaine.
+
+# **References**
+
+- Cours **Professeur DEME**, Universite Gaston Berger de Saint-Louis;\
+- Site web **Delle-Data**;\
+- Forum sur Internet;\
+- Livre R.
+
+
+
+
+
+
+
+
+
+
+
